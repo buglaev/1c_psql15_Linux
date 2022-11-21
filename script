@@ -98,4 +98,4 @@ WantedBy=multi-user.target" >> /etc/systemd/system/rassrv1cv8.service
     systemctl daemon-reload
     systemctl enable rassrv1cv8.service
     systemctl start rassrv1cv8.service
-    netstat –tlnp |grep :1545 &>> log_scripts.log
+    netstat –tlnp |grep :1545 >> log_scripts.log
