@@ -1,0 +1,101 @@
+#!/bin/sh
+# Создаём файл лога
+    touch log_scripts.log
+    chmod 777 log_scripts.log
+echo "Start scripts" >> log_scripts.log
+# Запускаем обновление системы
+echo "Update && Upgrade" >> log_scripts.log
+    apt update -y 
+    apt upgrade -y
+# Устанавливаем дату и часовой пояс
+echo "DATA `date +"%Y-%m-%d_%H-%M-%S"`" >> log_scripts.log
+echo "Часовой пояс ДО" >> log_scripts.log
+    timedatectl >> log_scripts.log
+    timedatectl set-timezone Europe/Moscow
+echo "Часовой пояс ПОСЛЕ" >> log_scripts.log
+    timedatectl >> log_scripts.log
+# Установка дополнительных пакетов для 1с
+echo "Установка шрифтов Microsoft и дополнительных пакетов" >> log_scripts.log
+    apt install ttf-mscorefonts-installer imagemagick unixodbc sudo curl net-tools -y
+# Генерация и установка локалей
+echo "Генерация и установка locales" >> log_scripts.log
+    dpkg-reconfigure -f noninteractive tzdata && \
+    sed -i -e 's/# ru_RU.UTF-8 UTF-8/ru_RU.UTF-8 UTF-8/' /etc/locale.gen && \
+    echo 'LANG="ru_RU.UTF-8"'>/etc/default/locale && \
+    dpkg-reconfigure --frontend=noninteractive locales && \
+    update-locale LANG=ru_RU.UTF-8
+# Монтирование дисков внешних хранилищ с инсталяторами 1с
+echo "Монтирование дисков" >> log_scripts.log
+    apt install nfs-common -y
+    #echo "192.168.50.8:/volume2/1cBackup/ /mnt/1cBackup nfs defaults 0 0" >> /etc/fstab
+    #mkdir /mnt/1cBackup
+    #mount /mnt/1cBackup
+    mount | grep '1cBackup' >> log_scripts.log
+# Установка пакета libenchant1c2a
+    dpkg -i /mnt/1cBackup/install/libenchant1c2a_1.6.0-11.3build1_amd64.deb 
+    apt install -f -y
+    dpkg -i /mnt/1cBackup/install/libenchant1c2a_1.6.0-11.3build1_amd64.deb
+#Установка кластера сервера 1с
+echo "Установка кластера сервера 1с" >> log_scripts.log
+    cp /mnt/1cBackup/install/server64_8_3_22_1704.tar.gz ./
+    tar xzvf server64_8_3_22_1704.tar.gz
+    rm ./server64_8_3_22_1704.tar.gz
+    chmod +x ./setup-full-8.3.22.1704-x86_64.run
+    ./setup-full-8.3.22.1704-x86_64.run --mode unattended --enable-components server,ws,server_admin,liberica_jre,ru
+    cp /opt/1cv8/x86_64/8.3.22.1704/srv1cv8-8.3.22.1704\@.service /lib/systemd/system/srv1cv8-8.3.22.1704.service
+    chown root:root /lib/systemd/system/srv1cv8-8.3.22.1704.service
+    systemctl daemon-reload
+    systemctl enable srv1cv8-8.3.22.1704.service
+    systemctl start srv1cv8-8.3.22.1704.service
+    #systemctl status srv1cv8-8.3.22.1704.service >> log_scripts.log
+    rm ./setup-full-8.3.22.1704-x86_64.run
+# Установка Postgres
+echo "Установка Postgres" >> log_scripts.log
+    wget https://repo.postgrespro.ru/1c-15/keys/pgpro-repo-add.sh
+    sh pgpro-repo-add.sh
+    apt-get install postgrespro-1c-15 -y
+    systemctl stop postgrespro-1c-15
+    rm -rf /var/lib/pgpro/1c-15/data/*
+    /opt/pgpro/1c-15/bin/pg-setup initdb --locale=ru_RU.UTF-8
+    systemctl start postgrespro-1c-15
+    #systemctl status postgrespro-1c-15
+    sudo ln -s /opt/pgpro/1c-15/bin/psql /usr/bin/psql
+    sudo -u postgres /usr/bin/psql -U postgres -c "alter user postgres with password 'DAGod5o2';" >> log_scripts.log
+    systemctl restart postgrespro-1c-15
+# Создаем службу управления сервером 1с RAS
+echo "Создаем службу управления сервером 1с RAS" >> log_scripts.log
+    touch /etc/systemd/system/rassrv1cv8.service
+    echo "[Unit]
+
+Description=1C:Enterprise Remote Administration Service
+
+After=network.target remote-fs.target nss-lookup.target
+
+Requires=srv1cv8-8.3.22.1704.service
+
+[Service]
+
+Type=simple
+
+ExecStart=/opt/1cv8/x86_64/8.3.22.1704/ras cluster --port=1545
+
+KillSignal=SIGINT
+
+PrivateTmp=true
+
+Restart=on-failure
+
+RestartSec=5
+
+User=usr1cv8
+
+Group=grp1cv8
+
+[Install]
+
+WantedBy=multi-user.target" >> /etc/systemd/system/rassrv1cv8.service
+    chmod +x /etc/systemd/system/rassrv1cv8.service
+    systemctl daemon-reload
+    systemctl enable rassrv1cv8.service
+    systemctl start rassrv1cv8.service
+    netstat –tlnp |grep :1545 &>> log_scripts.log
