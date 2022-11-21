@@ -27,9 +27,9 @@ echo "Генерация и установка locales" >> log_scripts.log
 # Монтирование дисков внешних хранилищ с инсталяторами 1с
 echo "Монтирование дисков" >> log_scripts.log
     apt install nfs-common -y
-    #echo "192.168.50.8:/volume2/1cBackup/ /mnt/1cBackup nfs defaults 0 0" >> /etc/fstab
-    #mkdir /mnt/1cBackup
-    #mount /mnt/1cBackup
+    echo "192.168.50.8:/volume2/1cBackup/ /mnt/1cBackup nfs defaults 0 0" >> /etc/fstab
+    mkdir /mnt/1cBackup
+    mount /mnt/1cBackup
     mount | grep '1cBackup' >> log_scripts.log
 # Установка пакета libenchant1c2a
     dpkg -i /mnt/1cBackup/install/libenchant1c2a_1.6.0-11.3build1_amd64.deb 
