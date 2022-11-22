@@ -16,7 +16,7 @@ echo "Часовой пояс ПОСЛЕ" >> log_scripts.log
     timedatectl >> log_scripts.log
 # Установка дополнительных пакетов для 1с
 echo "Установка шрифтов Microsoft и дополнительных пакетов" >> log_scripts.log
-    apt install ttf-mscorefonts-installer imagemagick unixodbc sudo curl net-tools -y
+    apt install ttf-mscorefonts-installer imagemagick unixodbc sudo curl net-tools pigz -y
 # Генерация и установка локалей
 echo "Генерация и установка locales" >> log_scripts.log
     dpkg-reconfigure -f noninteractive tzdata && \
